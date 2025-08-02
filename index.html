@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Predictions QuantIntelli+ Leaderboard</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+        <script>
+            tailwind.config = {
+              darkMode: 'class',
+              theme: {
+                extend: {
+                  colors: {
+                    dark: { 
+                      100: '#1f2937', 
+                      200: '#111827', 
+                      300: '#0f172a', 
+                      400: '#0b0f19', 
+                      500: '#060818', 
+                    },
+                    accent: { 
+                      100: '#93c5fd', 
+                      200: '#60a5fa', 
+                      300: '#3b82f6', 
+                      400: '#2563eb', 
+                      500: '#1d4ed8', 
+                    }
+                  },
+                  fontFamily: {
+                    sans: ['Inter', 'sans-serif'],
+                  },
+                }
+              }
+            }
+        </script>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+            
+            body {
+              font-family: 'Inter', sans-serif;
+            }
+
+            .fade-in {
+                animation: fadeIn 0.5s ease-in-out;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            .sortable i {
+                transition: transform 0.2s ease;
+            }
+            html.dark .sortable i {
+                color: #9ca3af; 
+            }
+            html.dark .sortable.sort-asc i.fa-sort-up,
+            html.dark .sortable.sort-desc i.fa-sort-down {
+                color: #d1d5db; 
+            }
+
+
+            .sortable[data-column="updatedAt"] i {
+                display: none !important;
+            }
+
+            .sortable i.fa-sort-up,
+            .sortable i.fa-sort-down {
+                 display: none;
+            }
+
+            .sortable.sort-asc i.fa-sort-up {
+                 display: inline-block;
+            }
+
+            .sortable.sort-desc i.fa-sort-down {
+                 display: inline-block;
+            }
+
+            .sortable.sort-asc i.fa-sort,
+            .sortable.sort-desc i.fa-sort {
+                 display: none;
+            }
+
+            .highlight-row {
+                transition: background-color 0.3s ease;
+            }
+
+            .highlight-row:hover {
+                background-color: #f3f4f6; 
+            }
+            html.dark .highlight-row:hover {
+                background-color: #1f2937; 
+            }
+
+            .outcome-home { color: #1d4ed8; font-weight: 600; } 
+            html.dark .outcome-home { color: #60a5fa; } 
+            .outcome-draw { color: #f59e0b; font-weight: 600; } 
+            html.dark .outcome-draw { color: #fcd34d; } 
+            .outcome-away { color: #dc2626; font-weight: 600; } 
+            html.dark .outcome-away { color: #f87171; } 
+            .outcome-unknown { color: #6b7280; font-weight: 600; } 
+            html.dark .outcome-unknown { color: #9ca3af; } 
+            .outcome-goals { color: #059669; font-weight: 600; } 
+            html.dark .outcome-goals { color: #34d399; } 
+
+            .state-won { background-color: #dcfce7;  color: #047857; }
+            html.dark .state-won { background-color: rgba(16, 185, 129, 0.15); color: #34d399; } 
+            .state-loss { background-color: #fee2e2; color: #b91c1c; }
+            html.dark .state-loss { background-color: rgba(239, 68, 68, 0.15); color: #f87171; } 
+            .state-pending { background-color: #fef3c7; color: #92400e; }
+            html.dark .state-pending { background-color: rgba(245, 158, 11, 0.15); color: #fcd34d; } 
+            .state-unknown { background-color: #e5e7eb; color: #4b5563; }
+            html.dark .state-unknown { background-color: rgba(107, 114, 128, 0.15); color: #9ca3af; } 
+
+
+            .outcome-icon-home::before { content: "\f015"; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-right: 0.25rem; }
+            .outcome-icon-draw::before { content: "\f52c"; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-right: 0.25rem; }
+            .outcome-icon-away::before { content: "\f7b2"; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-right: 0.25rem; }
+            .outcome-icon-unknown::before { content: "\f059"; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-right: 0.25rem; }
+            .outcome-icon-goals::before { content: "\f1e3"; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-right: 0.25rem; } 
+
+
+            .state-icon-won::before { content: "\f058"; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-right: 0.25rem; }
+            .state-icon-loss::before { content: "\f057"; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-right: 0.25rem; }
+            .state-icon-pending::before { content: "\f017"; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-right: 0.25rem; }
+            .state-icon-unknown::before { content: "\f059"; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-right: 0.25rem; }
+
+            .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+            
+            .scrollbar-thin::-webkit-scrollbar { width: 8px; }
+            .scrollbar-thin::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+            .scrollbar-thin::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+            .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+            html.dark .scrollbar-thin::-webkit-scrollbar-track { background: #111827; }
+            html.dark .scrollbar-thin::-webkit-scrollbar-thumb { background: #374151; }
+            html.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+
+
+            @media (max-width: 767px) {
+                .mobile-table-card thead { display: none; }
+                .mobile-table-card tbody,
+                .mobile-table-card tr,
+                .mobile-table-card td { display: block; width: 100% !important; }
+                .mobile-table-card tr {
+                    margin-bottom: 1.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem;
+                    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); overflow: hidden;
+                }
+                html.dark .mobile-table-card tr {
+                    border-color: #1f2937; 
+                    box-shadow: 0 1px 3px 0 rgba(0,0,0,0.3), 0 1px 2px 0 rgba(0,0,0,0.2);
+                }
+                .mobile-table-card td {
+                    padding: 0.75rem 1rem; text-align: right; position: relative; border-bottom: 1px solid #f3f4f6; 
+                }
+                 html.dark .mobile-table-card td { border-bottom-color: #1f2937; }
+                .mobile-table-card td:last-child { border-bottom: none; }
+                .mobile-table-card td::before {
+                    content: attr(data-label); position: absolute; left: 1rem; width: calc(45% - 1rem);
+                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;
+                    font-weight: 600; color: #4b5563; 
+                }
+                html.dark .mobile-table-card td::before { color: #9ca3af; }
+                
+                /* START: Mobile Match cell layout adjustments */
+                .mobile-table-card td[data-label="Match"] div:first-child { /* This is the container for icon and text block */
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-end; /* Aligns the (icon + text block) to the right */
+                }
+                .mobile-table-card td[data-label="Match"] .flex-shrink-0 { /* The icon's div */
+                    display: flex !important; /* Override display:none; Ensure it's visible */
+                    align-items: center;
+                    justify-content: center;
+                    width: 2rem;   /* approx w-8 */
+                    height: 2rem;  /* approx h-8 */
+                    margin-right: 0.5rem; /* mr-2 */
+                }
+                .mobile-table-card td[data-label="Match"] .flex-shrink-0 i.fa-futbol { /* Icon itself */
+                    font-size: 1rem; /* Adjust icon size for the smaller container */
+                }
+                .mobile-table-card td[data-label="Match"] > div > div:last-child { /* The text block (match name + date) */
+                    text-align: left; /* Text within this block should be left-aligned */
+                }
+                /* END: Mobile Match cell layout adjustments */
+
+                .mobile-table-card td[data-label="Analysis"] {
+                    display: flex; justify-content: center; padding-top: 1rem; padding-bottom: 1rem; background-color: #f9fafb; 
+                }
+                html.dark .mobile-table-card td[data-label="Analysis"] { background-color: #0f172a; }
+                .mobile-table-card td[data-label="Analysis"]::before { display: none; }
+                .mobile-table-card td .w-full.bg-gray-200.rounded-full { margin-left: 50%; width: 50%;}
+                html.dark .mobile-table-card td .w-full.bg-gray-200.rounded-full { background-color: #374151; } /* Darker progress bar track */
+                .mobile-table-card td span.px-2.py-1.text-xs.rounded-full { float: right; display: inline-block; }
+                .mobile-table-card td[data-label="Outcome"]::after,
+                .mobile-table-card td[data-label="State"]::after { content: ""; display: table; clear: both; }
+            }
+
+            input[type="date"]::-webkit-calendar-picker-indicator {
+                opacity: 0; position: absolute; right: 0; width: 2em; height: 100%; cursor: pointer;
+            }
+            input[type="date"] { 
+                color-scheme: dark; /* Helps with native picker UI styling */
+            }
+
+            /* START: Fix for date input text color in dark mode */
+            html.dark input[type="date"] {
+                color: #f3f4f6; /* Tailwind gray-100, ensuring the input element itself has this color */
+            }
+            html.dark input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+            html.dark input[type="date"]::-webkit-datetime-edit-month-field,
+            html.dark input[type="date"]::-webkit-datetime-edit-day-field,
+            html.dark input[type="date"]::-webkit-datetime-edit-year-field,
+            html.dark input[type="date"]::-webkit-datetime-edit-text {
+                color: inherit; /* Inherit from the input element */
+            }
+
+            html.dark input[type="date"]::placeholder {
+                color: #9ca3af; 
+                opacity: 1; 
+            }
+            html.dark input[type="date"]::-webkit-input-placeholder { 
+                color: #9ca3af;
+                opacity: 1;
+            }
+            html.dark input[type="date"]::-moz-placeholder { 
+                color: #9ca3af;
+                opacity: 1;
+            }
+            html.dark input[type="date"]:-ms-input-placeholder { 
+                color: #9ca3af;
+                opacity: 1;
+            }
+            html.dark input[type="date"]::-ms-input-placeholder { 
+                color: #9ca3af;
+                opacity: 1;
+            }
+            /* END: Fix for date input text color in dark mode */
+
+        </style>
+    </head>
+    <body class="bg-gray-50 dark:bg-dark-400 min-h-screen font-sans text-gray-900 dark:text-gray-200">
+        <div class="container mx-auto px-4 py-8">
+            <div class="bg-white dark:bg-dark-300 rounded-lg shadow-md p-6 mb-6">
+                <header class="mb-6">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center">
+                        <i class="fas fa-trophy text-yellow-500 dark:text-yellow-400 mr-3"></i>
+                        Predictions Leaderboard
+                    </h1>
+                    <div class="mt-4 p-4 bg-blue-50 dark:bg-accent-500/10 rounded-md border border-blue-100 dark:border-accent-500/30">
+                        <h2 class="text-lg font-semibold text-blue-800 dark:text-accent-100 mb-2">How Our Predictions Work</h2>
+                        <ul class="space-y-2 text-gray-700 dark:text-gray-300">
+                            <li class="flex items-start">
+                                <i class="fas fa-info-circle text-blue-500 dark:text-accent-200 mt-1 mr-2"></i>
+                                <span>Predictions come in two types: <strong>Statistical</strong> or <strong>Contextual</strong></span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 dark:text-green-400 mt-1 mr-2"></i>
+                                <span>Example: Arsenal - Bournemouth <span class="px-2 py-1 bg-gray-100 dark:bg-dark-100 rounded text-gray-800 dark:text-gray-200">Home/Draw</span> means Statistical: Home AND Contextual: Draw.</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-trophy text-yellow-500 dark:text-yellow-400 mt-1 mr-2"></i>
+                                <span>A prediction is considered <strong>won</strong> when either the Statistical OR the Contextual outcome is correct.</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-lightbulb text-amber-500 dark:text-amber-400 mt-1 mr-2"></i>
+                                <span>When Contextual Prediction shows <span class="px-2 py-1 bg-gray-100 dark:bg-dark-100 rounded text-gray-800 dark:text-gray-200">Over 2.5 Goals</span>, it means our model agrees with the Statistical Prediction and provides an alternative hedge.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </header>
+            </div>
+
+            <div class="bg-white dark:bg-dark-300 rounded-xl shadow-md overflow-hidden mb-6">
+                <div class="p-4 bg-indigo-600 dark:bg-accent-500 text-white flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+                    <h2 class="text-xl font-semibold">Match Statistics</h2>
+                    <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+                        <div class="relative w-full sm:w-auto">
+                            <label for="filter-date" class="sr-only">Filter by Date Updated</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-calendar-alt text-indigo-200 dark:text-accent-100"></i>
+                                </div>
+                                <input type="date" id="filter-date" 
+                                       class="bg-indigo-500 dark:bg-accent-400 text-white dark:text-gray-100 text-sm rounded-md block w-full pl-10 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-accent-200 cursor-pointer appearance-none"
+                                       placeholder="Select date">
+                                <button id="clear-date-btn" 
+                                        class="absolute inset-y-0 right-0 pr-2 flex items-center text-indigo-200 dark:text-accent-100 hover:text-white dark:hover:text-gray-100 focus:outline-none z-10"
+                                        aria-label="Clear date filter" style="display: none;">
+                                    <i class="fas fa-times text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="relative w-full sm:w-auto">
+                            <label for="filter-state" class="sr-only">Filter by State</label>
+                            <select id="filter-state" class="bg-indigo-500 dark:bg-accent-400 text-white dark:text-gray-100 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-accent-200 cursor-pointer block w-full">
+                                <option value="all">All States</option>
+                                <option value="pending">Pending</option>
+                                <option value="won">Won</option>
+                                <option value="loss">Loss</option>
+                                <option value="unknown">Unknown</option>
+                            </select>
+                        </div>
+                        <button id="refresh-btn" class="bg-white text-indigo-600 dark:bg-dark-100 dark:text-accent-100 px-4 py-1.5 rounded-md hover:bg-indigo-50 dark:hover:bg-dark-50 transition flex items-center focus:outline-none focus:ring-2 focus:ring-white dark:focus:ring-gray-300 w-full sm:w-auto justify-center">
+                            <i class="fas fa-sync-alt mr-2"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto"> 
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-dark-100 mobile-table-card">
+                        <thead class="bg-gray-50 dark:bg-dark-200">
+                            <tr>
+                                
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer sortable" data-column="match">
+                                    Match
+                                    <i class="fas fa-sort ml-1 text-gray-400 dark:text-gray-500"></i><i class="fas fa-sort-up ml-1 text-gray-600 dark:text-gray-300"></i><i class="fas fa-sort-down ml-1 text-gray-600 dark:text-gray-300"></i>
+                                </th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer sortable" data-column="home">
+                                    Home Odds
+                                    <i class="fas fa-sort ml-1 text-gray-400 dark:text-gray-500"></i><i class="fas fa-sort-up ml-1 text-gray-600 dark:text-gray-300"></i><i class="fas fa-sort-down ml-1 text-gray-600 dark:text-gray-300"></i>
+                                </th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer sortable" data-column="draw">
+                                    Draw Odds
+                                    <i class="fas fa-sort ml-1 text-gray-400 dark:text-gray-500"></i><i class="fas fa-sort-up ml-1 text-gray-600 dark:text-gray-300"></i><i class="fas fa-sort-down ml-1 text-gray-600 dark:text-gray-300"></i>
+                                </th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer sortable" data-column="away">
+                                    Away Odds
+                                    <i class="fas fa-sort ml-1 text-gray-400 dark:text-gray-500"></i><i class="fas fa-sort-up ml-1 text-gray-600 dark:text-gray-300"></i><i class="fas fa-sort-down ml-1 text-gray-600 dark:text-gray-300"></i>
+                                </th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer sortable" data-column="statistical">
+                                    Statistical Pred.
+                                    <i class="fas fa-sort ml-1 text-gray-400 dark:text-gray-500"></i><i class="fas fa-sort-up ml-1 text-gray-600 dark:text-gray-300"></i><i class="fas fa-sort-down ml-1 text-gray-600 dark:text-gray-300"></i>
+                                </th>
+                                 <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer sortable" data-column="contextual">
+                                    Contextual Pred.
+                                    <i class="fas fa-sort ml-1 text-gray-400 dark:text-gray-500"></i><i class="fas fa-sort-up ml-1 text-gray-600 dark:text-gray-300"></i><i class="fas fa-sort-down ml-1 text-gray-600 dark:text-gray-300"></i>
+                                </th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer sortable" data-column="outcome">
+                                    Outcome
+                                    <i class="fas fa-sort ml-1 text-gray-400 dark:text-gray-500"></i><i class="fas fa-sort-up ml-1 text-gray-600 dark:text-gray-300"></i><i class="fas fa-sort-down ml-1 text-gray-600 dark:text-gray-300"></i>
+                                </th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer sortable" data-column="state">
+                                    State
+                                    <i class="fas fa-sort ml-1 text-gray-400 dark:text-gray-500"></i><i class="fas fa-sort-up ml-1 text-gray-600 dark:text-gray-300"></i><i class="fas fa-sort-down ml-1 text-gray-600 dark:text-gray-300"></i>
+                                </th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Analysis</th>
+                                 <th scope="col" class="sr-only sortable" data-column="updatedAt">Updated At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="bg-white dark:bg-dark-200 divide-y divide-gray-200 dark:divide-dark-100">
+                            <tr>
+                                <td colspan="9" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400"> {/* Adjusted px-6 to px-3 */}
+                                    <div class="flex justify-center items-center py-8">
+                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-accent-300"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                                <div class="px-6 py-4 bg-gray-50 dark:bg-dark-200 border-t border-gray-200 dark:border-dark-100 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                        Showing <span id="showing-from">0</span> to <span id="showing-to">0</span> of <span id="total-items">0</span> entries
+                    </div>
+                    <div class="flex items-center space-x-1 sm:space-x-2">
+                        <button id="prev-page" class="h-8 flex items-center px-3 py-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-100 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-dark-50 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500" disabled>
+                            <i class="fas fa-chevron-left text-xs sm:mr-1.5"></i><span class="hidden sm:inline">Previous</span>
+                        </button>
+                        <div id="page-numbers-container" class="flex items-center space-x-1">
+                            <!-- Page numbers will be dynamically injected here by JavaScript -->
+                        </div>
+                        <button id="next-page" class="h-8 flex items-center px-3 py-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-100 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-dark-50 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500" disabled>
+                            <span class="hidden sm:inline">Next</span><i class="fas fa-chevron-right text-xs sm:ml-1.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+            
+            <div id="analysis-modal" class="fixed inset-0 bg-gray-800 dark:bg-black bg-opacity-75 dark:bg-opacity-60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 hidden opacity-0 transition-opacity duration-300 ease-in-out">
+                <div id="analysis-modal-content" class="bg-white dark:bg-dark-300 rounded-t-xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl transform scale-95 opacity-0 transition-all duration-300 ease-in-out max-h-[90vh] sm:max-h-[85vh] flex flex-col fixed bottom-0 left-0 right-0 sm:relative">
+                    <div class="flex justify-between items-center p-5 border-b border-gray-200 dark:border-dark-100">
+                        <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100 flex items-center">
+                            <i class="fas fa-chart-bar text-indigo-600 dark:text-accent-200 mr-3"></i>
+                            Prediction Analysis
+                        </h3>
+                        <button id="close-modal-btn" aria-label="Close analysis modal" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-dark-100">
+                            <i class="fas fa-times fa-lg"></i>
+                        </button>
+                    </div>
+                    <div id="modal-content-body" class="p-6 space-y-5 text-gray-700 dark:text-gray-300 overflow-y-auto custom-scrollbar"> 
+                    </div>
+                    <div class="flex items-center justify-end p-4 bg-gray-50 dark:bg-dark-200 border-t border-gray-200 dark:border-dark-100 rounded-b-xl">
+                        <button id="modal-ok-btn" class="text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-accent-400 dark:hover:bg-accent-300 focus:ring-4 focus:outline-none focus:ring-indigo-300 dark:focus:ring-accent-500 font-medium rounded-lg text-sm px-6 py-2.5 text-center transition-colors">
+                            OK
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-dark-300 rounded-xl shadow-xl overflow-hidden p-6 md:p-8">
+                <h2 class="text-2xl sm:text-3xl font-semibold text-gray-800 dark:text-gray-100 mb-8 text-center">
+                    <i class="fas fa-chart-pie text-indigo-600 dark:text-accent-200 mr-3"></i>Performance Dashboard
+                </h2>
+
+                <div class="mb-10">
+                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-5 pl-2 border-l-4 border-indigo-500 dark:border-accent-300">Core Metrics</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-700 dark:from-accent-500 dark:to-accent-400 text-white p-4 sm:p-5 rounded-xl shadow-lg transform hover:scale-103 transition-transform duration-300 ease-out">
+                            <div class="flex justify-between items-start mb-2">
+                                <p class="text-base font-medium text-blue-100 dark:text-accent-100/80">Total Matches</p>
+                                <div class="p-2.5 rounded-full bg-white/25 dark:bg-white/10"><i class="fas fa-futbol text-xl text-white"></i></div>
+                            </div>
+                            <p class="text-3xl sm:text-4xl font-bold" id="total-matches">0</p>
+                            <p class="text-xs text-blue-200 dark:text-accent-100/70 mt-1">All processed entries</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-green-500 to-green-700 dark:from-green-600 dark:to-green-500 text-white p-4 sm:p-5 rounded-xl shadow-lg transform hover:scale-103 transition-transform duration-300 ease-out">
+                            <div class="flex justify-between items-start mb-2">
+                                <p class="text-base font-medium text-green-100 dark:text-green-100/80">Predictions Won</p>
+                                <div class="p-2.5 rounded-full bg-white/25 dark:bg-white/10"><i class="fas fa-check-circle text-xl text-white"></i></div>
+                            </div>
+                            <p class="text-3xl sm:text-4xl font-bold" id="total-won">0</p>
+                            <p class="text-xs text-green-200 dark:text-green-100/70 mt-1">Correctly predicted outcomes</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-red-500 to-red-700 dark:from-red-600 dark:to-red-500 text-white p-4 sm:p-5 rounded-xl shadow-lg transform hover:scale-103 transition-transform duration-300 ease-out">
+                            <div class="flex justify-between items-start mb-2">
+                                <p class="text-base font-medium text-red-100 dark:text-red-100/80">Predictions Loss</p>
+                                <div class="p-2.5 rounded-full bg-white/25 dark:bg-white/10"><i class="fas fa-times-circle text-xl text-white"></i></div>
+                            </div>
+                            <p class="text-3xl sm:text-4xl font-bold" id="total-loss">0</p>
+                            <p class="text-xs text-red-200 dark:text-red-100/70 mt-1">Incorrectly predicted outcomes</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-amber-500 to-amber-700 dark:from-amber-600 dark:to-amber-500 text-white p-4 sm:p-5 rounded-xl shadow-lg transform hover:scale-103 transition-transform duration-300 ease-out">
+                            <div class="flex justify-between items-start mb-2">
+                                <p class="text-base font-medium text-amber-100 dark:text-amber-100/80">Predictions Pending</p>
+                                <div class="p-2.5 rounded-full bg-white/25 dark:bg-white/10"><i class="fas fa-hourglass-half text-xl text-white"></i></div>
+                            </div>
+                            <p class="text-3xl sm:text-4xl font-bold" id="total-pending">0</p>
+                            <p class="text-xs text-amber-200 dark:text-amber-100/70 mt-1">Awaiting results</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-10">
+                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-5 pl-2 border-l-4 border-green-500 dark:border-green-400">Accuracy & Rates</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        <div class="bg-white dark:bg-dark-200 p-4 sm:p-5 rounded-xl shadow-xl border border-gray-200 dark:border-dark-100 flex flex-col items-center justify-center transform hover:shadow-2xl transition-shadow duration-300 ease-out">
+                            <p class="text-base font-semibold text-indigo-700 dark:text-accent-200 mb-2">Overall Win Rate</p>
+                            <div class="relative w-28 h-28 sm:w-32 sm:h-32 mb-2">
+                                <svg class="w-full h-full" viewBox="0 0 36 36">
+                                    <path class="text-gray-200 dark:text-dark-100" stroke-width="3.5" fill="none" stroke-linecap="round" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path id="win-rate-circle" class="text-indigo-600 dark:text-accent-300" stroke-width="3.5" fill="none" stroke-dasharray="0, 100" stroke-linecap="round" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <p class="text-2xl sm:text-3xl font-bold text-indigo-700 dark:text-accent-200" id="win-rate">0%</p>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 text-center" id="win-rate-details">(0/0 Decided)</p>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-dark-200 p-4 sm:p-5 rounded-xl shadow-lg border border-gray-100 dark:border-dark-100 transform hover:scale-103 transition-transform duration-300 ease-out">
+                            <div class="flex items-center text-sky-600 dark:text-sky-400 mb-2">
+                                <i class="fas fa-calculator text-xl mr-2.5"></i>
+                                <p class="text-base font-semibold">Statistical Accuracy</p>
+                            </div>
+                            <p class="text-2xl sm:text-3xl font-bold text-sky-700 dark:text-sky-300 mb-2" id="stat-accuracy">0%</p>
+                            <div class="w-full bg-gray-200 dark:bg-dark-100 rounded-full h-2">
+                                <div id="stat-accuracy-bar" class="bg-sky-500 dark:bg-sky-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5" id="stat-accuracy-details">(0/0 1X2 Bets)</p>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-dark-200 p-4 sm:p-5 rounded-xl shadow-lg border border-gray-100 dark:border-dark-100 transform hover:scale-103 transition-transform duration-300 ease-out">
+                            <div class="flex items-center text-orange-600 dark:text-orange-400 mb-2">
+                                <i class="fas fa-lightbulb text-xl mr-2.5"></i>
+                                <p class="text-base font-semibold">Contextual (1X2) Accuracy</p>
+                            </div>
+                            <p class="text-2xl sm:text-3xl font-bold text-orange-700 dark:text-orange-300 mb-2" id="contextual-1x2-accuracy">0%</p>
+                            <div class="w-full bg-gray-200 dark:bg-dark-100 rounded-full h-2">
+                                <div id="contextual-1x2-accuracy-bar" class="bg-orange-500 dark:bg-orange-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5" id="contextual-1x2-accuracy-details">(0/0 1X2 Bets)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-5 pl-2 border-l-4 border-teal-500 dark:border-teal-400">Odds & Value Insights</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                         <div class="bg-gray-50 dark:bg-dark-200 p-4 sm:p-5 rounded-xl shadow-lg border border-gray-100 dark:border-dark-100 transform hover:scale-103 transition-transform duration-300 ease-out">
+                            <div class="flex items-center text-teal-600 dark:text-teal-400 mb-3">
+                                <i class="fas fa-chart-line text-xl mr-3"></i>
+                                <p class="text-base font-semibold">Avg. Winning Odds (1X2)</p>
+                            </div>
+                            <p class="text-3xl sm:text-4xl font-bold text-teal-700 dark:text-teal-300" id="avg-winning-odds">N/A</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">For successful 1X2 predictions</p>
+                        </div>
+                        <!-- Home Odds Win Rates by Range -->
+                        <div class="bg-gray-50 dark:bg-dark-200 p-4 sm:p-5 rounded-xl shadow-lg border border-gray-100 dark:border-dark-100 transform hover:scale-103 transition-transform duration-300 ease-out">
+                            <div class="flex items-center text-cyan-600 dark:text-cyan-400 mb-4">
+                                <i class="fas fa-house-signal text-xl mr-3"></i>
+                                <p class="text-base font-semibold">Home Odds Win Rates</p>
+                            </div>
+                            <div id="home-odds-ranges-container">
+                                <p class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Loading data...</p>
+                            </div>
+                        </div>
+                        <!-- Away Odds Win Rates by Range -->
+                        <div class="bg-gray-50 dark:bg-dark-200 p-4 sm:p-5 rounded-xl shadow-lg border border-gray-100 dark:border-dark-100 transform hover:scale-103 transition-transform duration-300 ease-out">
+                            <div class="flex items-center text-pink-600 dark:text-pink-400 mb-4">
+                                <i class="fas fa-car-side text-xl mr-3"></i>
+                                <p class="text-base font-semibold">Away Odds Win Rates</p>
+                            </div>
+                            <div id="away-odds-ranges-container">
+                                <p class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Loading data...</p>
+                            </div>
+                        </div>
+                        <!-- Home EV Card -->
+                        <div class="bg-gray-50 dark:bg-dark-200 p-4 sm:p-5 rounded-xl shadow-lg border border-gray-100 dark:border-dark-100 transform hover:scale-103 transition-transform duration-300 ease-out">
+                            <div class="flex items-center text-cyan-600 dark:text-cyan-400 mb-4">
+                                <i class="fas fa-balance-scale text-xl mr-3"></i>
+                                <p class="text-base font-semibold">Home Odds Expected Value</p>
+                            </div>
+                            <div id="home-ev-by-odds-container">
+                                <p class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Loading data...</p>
+                            </div>
+                        </div>
+                         <!-- Away EV Card -->
+                        <div class="bg-gray-50 dark:bg-dark-200 p-4 sm:p-5 rounded-xl shadow-lg border border-gray-100 dark:border-dark-100 transform hover:scale-103 transition-transform duration-300 ease-out">
+                            <div class="flex items-center text-pink-600 dark:text-pink-400 mb-4">
+                                <i class="fas fa-balance-scale-right text-xl mr-3"></i>
+                                <p class="text-base font-semibold">Away Odds Expected Value</p>
+                            </div>
+                            <div id="away-ev-by-odds-container">
+                                <p class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Loading data...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-dark-300 rounded-xl shadow-xl overflow-hidden p-6 md:p-8 mt-6">
+                <h2 class="text-2xl sm:text-3xl font-semibold text-gray-800 dark:text-gray-100 mb-2 text-center">
+                    <i class="fas fa-tachometer-alt text-indigo-600 dark:text-accent-200 mr-3"></i>Performance Trends
+                </h2>
+                <p class="text-center text-gray-500 dark:text-gray-400 mb-8">Cumulative & 7-Day Rolling Win Rate vs. Daily Prediction Volume</p>
+                <div id="winRateChartContainer" class="relative h-80 sm:h-96 md:h-[500px]">
+                    <canvas id="winRateChart"></canvas>
+                </div>
+            </div>
+        </div>
+   
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const supabaseUrl = 'https://gvzkisekbwibvtsdstqe.supabase.co';
+                const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2emtpc2VrYndpYnZ0c2RzdHFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU2MDMwMjYsImV4cCI6MjA2MTE3OTAyNn0.P425utVoJAVSRasQ8wjhAaklFGoVQvwtWGRB6Q9lj7k';
+        
+                window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        
+                let currentPage = 1;
+                const itemsPerPage = 10;
+                let sortColumn = 'updatedAt';
+                let sortDirection = 'desc';
+        
+                let currentFilter = 'all';
+                let selectedDateFilter = null;
+        
+                let allData = []; 
+                let filteredAndSortedData = []; 
+                let winRateChartInstance = null;
+        
+                const tableBody = document.getElementById('table-body');
+                const prevPageBtn = document.getElementById('prev-page');
+                const nextPageBtn = document.getElementById('next-page');
+                const showingFrom = document.getElementById('showing-from');
+                const showingTo = document.getElementById('showing-to');
+                const totalItems = document.getElementById('total-items');
+                const filterState = document.getElementById('filter-state');
+                const filterDateInput = document.getElementById('filter-date');
+                const clearDateBtn = document.getElementById('clear-date-btn');
+                const refreshBtn = document.getElementById('refresh-btn');
+        
+                const totalMatchesElement = document.getElementById('total-matches');
+                const totalWonElement = document.getElementById('total-won');
+                const totalLossElement = document.getElementById('total-loss');
+                const winRateElement = document.getElementById('win-rate');
+        
+                const analysisModal = document.getElementById('analysis-modal');
+                const analysisModalContent = document.getElementById('analysis-modal-content');
+                const modalContentBody = document.getElementById('modal-content-body');
+                const closeModalBtn = document.getElementById('close-modal-btn');
+                const modalOkBtn = document.getElementById('modal-ok-btn');
+                
+                const totalPendingElement = document.getElementById('total-pending');
+                const statAccuracyElement = document.getElementById('stat-accuracy');
+                const contextual1X2AccuracyElement = document.getElementById('contextual-1x2-accuracy');
+                const avgWinningOddsElement = document.getElementById('avg-winning-odds');
+                const oddsBuckets = [
+                    { min: 1.01, max: 1.30, label: "1.01 - 1.30" }, { min: 1.31, max: 1.60, label: "1.31 - 1.60" },
+                    { min: 1.61, max: 1.90, label: "1.61 - 1.90" }, { min: 1.91, max: 2.20, label: "1.91 - 2.20" },
+                    { min: 2.21, max: 2.50, label: "2.21 - 2.50" }, { min: 2.51, max: 3.00, label: "2.51 - 3.00" },
+                    { min: 3.01, max: 4.00, label: "3.01 - 4.00" }, { min: 4.01, max: Infinity, label: "4.01+" }
+                ];              
+                const minSamplesPerBucket = 5; 
+
+                const homeOddsRangesContainer = document.getElementById('home-odds-ranges-container');
+                const awayOddsRangesContainer = document.getElementById('away-odds-ranges-container');
+                const homeEvByOddsContainer = document.getElementById('home-ev-by-odds-container');
+                const awayEvByOddsContainer = document.getElementById('away-ev-by-odds-container');
+        
+                function calculateState(statisticalPrediction, contextualPrediction, outcome) {
+                    if (outcome === null || outcome === "" || outcome === undefined) return "pending";
+                    const lowerOutcome = String(outcome).toLowerCase();
+                    const lowerStatistical = statisticalPrediction != null ? String(statisticalPrediction).toLowerCase() : null;
+                    const lowerContextual = contextualPrediction != null ? String(contextualPrediction).toLowerCase() : null;
+                    let statisticalWin = (lowerStatistical && lowerStatistical === lowerOutcome);
+                    let contextualWin = (lowerContextual && lowerContextual === lowerOutcome); 
+                    if (statisticalWin || contextualWin) return "won";
+                    const valid1X2Outcomes = ['home', 'draw', 'away'];
+                    if (valid1X2Outcomes.includes(lowerOutcome)) {
+                        let statWas1X2 = lowerStatistical && valid1X2Outcomes.includes(lowerStatistical);
+                        let contextWas1X2As1X2 = lowerContextual && valid1X2Outcomes.includes(lowerContextual);
+                        if ( (statWas1X2 && !statisticalWin) || (contextWas1X2As1X2 && !contextualWin) ) {
+                            if(statWas1X2 || contextWas1X2As1X2) return "loss";
+                        }
+                    }
+                    return "unknown";
+                }
+        
+                async function fetchData() {
+                    try {
+                        const loadingSpinnerColor = document.documentElement.classList.contains('dark') ? 'dark:border-accent-300' : 'border-indigo-600';
+                        tableBody.innerHTML = `<tr><td colspan="9" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400"><div class="flex justify-center items-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 ${loadingSpinnerColor}"></div></div></td></tr>`; // Adjusted px-6 to px-3
+                        const chartContainer = document.getElementById('winRateChartContainer');
+                        if (winRateChartInstance) { winRateChartInstance.destroy(); winRateChartInstance = null; }
+                        chartContainer.innerHTML = `<div class="flex justify-center items-center h-full"><div class="animate-spin rounded-full h-8 w-8 border-b-2 ${loadingSpinnerColor}"></div></div>`;
+        
+                        const { data, error } = await window.supabase.from('leaderboard_view').select('*'); 
+                        if (error) { console.error('Error fetching data:', error); throw error; }
+        
+                        allData = data.map(item => ({
+                           ...item, 
+                           state: calculateState(item.statistical, item.contextual, item.outcome),
+                           date: item.date ? new Date(item.date) : null, 
+                           updatedAt: item.updated_at ? new Date(item.updated_at) : null,
+                           home: item.home !== undefined && item.home !== null ? parseFloat(item.home) : null,
+                           draw: item.draw !== undefined && item.draw !== null ? parseFloat(item.draw) : null,
+                           away: item.away !== undefined && item.away !== null ? parseFloat(item.away) : null,
+                           statistical_confidence: item.statistical_confidence !== undefined && item.statistical_confidence !== null ? parseFloat(item.statistical_confidence) : null,
+                           contextual_confidence: item.contextual_confidence !== undefined && item.contextual_confidence !== null ? parseFloat(item.contextual_confidence) : null,
+                        }));
+                        
+                        currentPage = 1; renderTable(); updateSummaryStats();
+                        const chartData = prepareWinRateChartData(allData);
+                        renderWinRateChart(chartData.labels, chartData.datasets);
+        
+                    } catch (error) {
+                        console.error('Failed to load data:', error);
+                        const retryButtonClass = document.documentElement.classList.contains('dark') ? 'dark:bg-accent-400 dark:hover:bg-accent-300' : 'bg-indigo-600 hover:bg-indigo-700';
+                        tableBody.innerHTML = `<tr><td colspan="9" class="px-3 py-4 text-center text-red-500 dark:text-red-400"><div class="flex flex-col items-center"><i class="fas fa-exclamation-triangle text-2xl mb-2"></i><p>Failed to load data. Please check the console for details and try again.</p><button onclick="fetchData()" class="mt-2 px-3 py-1 text-white rounded-md focus:outline-none focus:ring-2 ${retryButtonClass}">Retry</button></div></td></tr>`; // Adjusted px-6 to px-3
+                        ['total-matches', 'total-won', 'total-loss', 'win-rate', 'total-pending', 'stat-accuracy', 'contextual-1x2-accuracy', 'avg-winning-odds'].forEach(id => {
+                            const el = document.getElementById(id); if (el) el.textContent = 'N/A';
+                        });
+                        ['win-rate-details', 'stat-accuracy-details', 'contextual-1x2-accuracy-details'].forEach(id => {
+                             const el = document.getElementById(id); if (el) el.textContent = '(N/A)';
+                        });
+                        if (homeOddsRangesContainer) homeOddsRangesContainer.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Data unavailable.</p>`;
+                        if (awayOddsRangesContainer) awayOddsRangesContainer.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Data unavailable.</p>`;
+                        if (homeEvByOddsContainer) homeEvByOddsContainer.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Data unavailable.</p>`;
+                        if (awayEvByOddsContainer) awayEvByOddsContainer.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Data unavailable.</p>`;
+                        
+                        showingFrom.textContent = 0; showingTo.textContent = 0; totalItems.textContent = 0;
+                        prevPageBtn.disabled = true; nextPageBtn.disabled = true;
+                        const chartContainer = document.getElementById('winRateChartContainer');
+                        if (winRateChartInstance) winRateChartInstance.destroy();
+                        chartContainer.innerHTML = `<p class="text-center text-red-500 dark:text-red-400 py-4 flex items-center justify-center h-full"><i class="fas fa-exclamation-triangle mr-2"></i>Failed to load chart data.</p>`;
+                    }
+                }
+        
+                function getFilteredData() {
+                    let filtered = [...allData];
+                    if (currentFilter !== 'all') {
+                        filtered = filtered.filter(item => String(item.state).toLowerCase() === currentFilter.toLowerCase());
+                    }
+                    if (selectedDateFilter instanceof Date) {
+                        filtered = filtered.filter(item => {
+                            if (!(item.updatedAt instanceof Date) || isNaN(item.updatedAt)) return false;
+                            const itemDateStr = item.updatedAt.getUTCFullYear() + '-' + String(item.updatedAt.getUTCMonth() + 1).padStart(2, '0') + '-' + String(item.updatedAt.getUTCDate()).padStart(2, '0');
+                            const filterDateStr = selectedDateFilter.getUTCFullYear() + '-' + String(selectedDateFilter.getUTCMonth() + 1).padStart(2, '0') + '-' + String(selectedDateFilter.getUTCDate()).padStart(2, '0');
+                            return itemDateStr === filterDateStr;
+                        });
+                    }
+                    return filtered;
+                }
+        
+                function getSortedData(data) {
+                    return [...data].sort((a, b) => {
+                        const aValue = a[sortColumn], bValue = b[sortColumn];
+                        const isANullish = (aValue === null || aValue === undefined || aValue === '');
+                        const isBNullish = (bValue === null || bValue === undefined || bValue === '');
+                        if (sortColumn === 'updatedAt' || sortColumn === 'date') {
+                             const aDate = a[sortColumn] instanceof Date && !isNaN(a[sortColumn]) ? a[sortColumn].getTime() : (isANullish ? null : -Infinity);
+                             const bDate = b[sortColumn] instanceof Date && !isNaN(b[sortColumn]) ? b[sortColumn].getTime() : (isBNullish ? null : -Infinity);
+                             if (aDate === null && bDate === null) return 0; if (aDate === null) return sortDirection === 'asc' ? 1 : -1; 
+                             if (bDate === null) return sortDirection === 'asc' ? -1 : 1;
+                             const comparison = aDate - bDate; return sortDirection === 'asc' ? comparison : -comparison;
+                        }
+                        if (sortColumn === 'match') {
+                            const matchComparison = String(a.match || '').localeCompare(String(b.match || ''));
+                            if (matchComparison !== 0) return sortDirection === 'asc' ? matchComparison : -matchComparison;
+                             if (a.date instanceof Date && b.date instanceof Date && !isNaN(a.date) && !isNaN(b.date)) {
+                                 const dateComparison = a.date.getTime() - b.date.getTime();
+                                 return sortDirection === 'asc' ? dateComparison : -dateComparison;
+                             } return 0;
+                        }
+                        if (sortColumn === 'state') {
+                             const stateOrder = { 'pending': 4, 'won': 3, 'loss': 2, 'unknown': 1, null: 0, '': 0 };
+                             const aStateValue = stateOrder[String(aValue).toLowerCase()] || 0;
+                             const bStateValue = stateOrder[String(bValue).toLowerCase()] || 0;
+                             const comparison = aStateValue - bStateValue; return sortDirection === 'asc' ? -comparison : comparison; 
+                        }
+                        if (isANullish && isBNullish) return 0; if (isANullish) return sortDirection === 'asc' ? 1 : -1; 
+                        if (isBNullish) return sortDirection === 'asc' ? -1 : 1; 
+                        if (['outcome', 'statistical', 'contextual'].includes(sortColumn)) {
+                             const comparison = String(aValue).localeCompare(String(bValue));
+                             return sortDirection === 'asc' ? comparison : -comparison;
+                        } else { 
+                            const numA = parseFloat(aValue), numB = parseFloat(bValue);
+                            if (!isNaN(numA) && !isNaN(numB)) {
+                                const comparison = numA - numB; return sortDirection === 'asc' ? comparison : -comparison;
+                            } else { 
+                                 const comparison = String(aValue).localeCompare(String(bValue));
+                                 return sortDirection === 'asc' ? comparison : -comparison;
+                            }
+                        }
+                    });
+                }
+        
+                function getPaginatedData(data) {
+                    const startIndex = (currentPage - 1) * itemsPerPage;
+                    return data.slice(startIndex, startIndex + itemsPerPage);
+                }
+                const range = (start, end) => {
+                    let length = end - start + 1;
+                    return Array.from({ length }, (_, idx) => idx + start);
+                };
+
+                function getPaginationItems(totalPages, currentPage, siblingCount = 1) {
+                    const DOTS = '...';
+                    const totalPageNumbersInDisplay = siblingCount + 5; 
+
+                    if (totalPageNumbersInDisplay >= totalPages) {
+                        return range(1, totalPages);
+                    }
+
+                    const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
+                    const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
+
+                    const shouldShowLeftDots = leftSiblingIndex > 2;
+                    const shouldShowRightDots = rightSiblingIndex < totalPages - 2;
+
+                    const firstPageIndex = 1;
+                    const lastPageIndex = totalPages;
+
+                    if (!shouldShowLeftDots && shouldShowRightDots) {
+                        let leftItemCount = 3 + 2 * siblingCount; 
+                        let leftRange = range(1, leftItemCount);
+                        return [...leftRange, DOTS, lastPageIndex];
+                    }
+
+                    if (shouldShowLeftDots && !shouldShowRightDots) {
+                        let rightItemCount = 3 + 2 * siblingCount; 
+                        let rightRange = range(totalPages - rightItemCount + 1, totalPages);
+                        return [firstPageIndex, DOTS, ...rightRange];
+                    }
+
+                    if (shouldShowLeftDots && shouldShowRightDots) {
+                        let middleRange = range(leftSiblingIndex, rightSiblingIndex);
+                        return [firstPageIndex, DOTS, ...middleRange, DOTS, lastPageIndex];
+                    }
+                    
+                    return range(1, totalPages); 
+                }
+
+                function renderPagination(totalPages, currentP) { 
+                    const pageNumbersContainer = document.getElementById('page-numbers-container');
+                    if (!pageNumbersContainer) return;
+
+                    pageNumbersContainer.innerHTML = ''; 
+
+                    if (totalPages <= 1) return; 
+
+                    const SIBLING_COUNT = 1; 
+
+                    const pageButtonBaseClasses = "page-number-btn min-w-[2rem] h-8 flex items-center justify-center px-2 py-1 text-sm rounded-md border";
+                    const pageButtonDefaultClasses = "border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-100 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-accent-300";
+                    const pageButtonActiveClasses = "border-indigo-600 dark:border-accent-400 bg-indigo-600 dark:bg-accent-400 text-white dark:text-gray-100 cursor-default";
+                    const ellipsisClasses = "px-1 sm:px-2 py-1 text-sm text-gray-500 dark:text-gray-400 flex items-center h-8";
+
+                    const paginationItems = getPaginationItems(totalPages, currentP, SIBLING_COUNT); 
+
+                    paginationItems.forEach(item => {
+                        if (item === '...') {
+                            const ellipsisSpan = document.createElement('span');
+                            ellipsisSpan.className = ellipsisClasses;
+                            ellipsisSpan.textContent = '...';
+                            pageNumbersContainer.appendChild(ellipsisSpan);
+                        } else {
+                            const pageButton = document.createElement('button');
+                            pageButton.dataset.page = item;
+                            pageButton.textContent = item;
+                            pageButton.className = `${pageButtonBaseClasses} ${item === currentP ? pageButtonActiveClasses : pageButtonDefaultClasses}`;
+                            if (item === currentP) {
+                                pageButton.disabled = true;
+                            }
+                            pageButton.addEventListener('click', (e) => {
+                                const page = parseInt(e.currentTarget.dataset.page);
+                                if (page && page !== currentPage) { 
+                                    currentPage = page; 
+                                    renderTable(); 
+                                    const tableElement = tableBody.closest('div.overflow-x-auto');
+                                    if (tableElement) {
+                                        window.scrollTo({ top: tableElement.offsetTop - 20, behavior: 'smooth' });
+                                    }
+                                }
+                            });
+                            pageNumbersContainer.appendChild(pageButton);
+                        }
+                    });
+                }
+                function renderTable() {
+                    filteredAndSortedData = getSortedData(getFilteredData());
+                    const totalItemsCount = filteredAndSortedData.length;
+                    
+                    let effectiveTotalPages = Math.ceil(totalItemsCount / itemsPerPage);
+                    const totalPagesForCurrentPageLogic = effectiveTotalPages === 0 ? 1 : effectiveTotalPages;
+
+                    if (currentPage > totalPagesForCurrentPageLogic) {
+                        currentPage = totalPagesForCurrentPageLogic;
+                    }
+                    if (currentPage < 1) { 
+                        currentPage = 1;
+                    }
+
+                    const paginatedData = getPaginatedData(filteredAndSortedData); 
+
+                    showingFrom.textContent = totalItemsCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+                    showingTo.textContent = Math.min(currentPage * itemsPerPage, totalItemsCount);
+                    totalItems.textContent = totalItemsCount;
+
+                    prevPageBtn.disabled = currentPage === 1;
+                    nextPageBtn.disabled = currentPage === effectiveTotalPages || effectiveTotalPages === 0;
+                    
+                    tableBody.innerHTML = '';
+                    const pageNumbersContainer = document.getElementById('page-numbers-container'); 
+
+                    if (totalItemsCount === 0) {
+                        tableBody.innerHTML = `<tr><td colspan="9" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No data available for the selected filter or date.</td></tr>`; // Adjusted px-6 to px-3
+                        if (pageNumbersContainer) pageNumbersContainer.innerHTML = ''; 
+                        prevPageBtn.disabled = true;
+                        nextPageBtn.disabled = true;
+                        return; 
+                    }
+
+                    let rowsHTML = '';
+                    paginatedData.forEach((item, indexOnPage) => {
+                        const overallIndex = ((currentPage - 1) * itemsPerPage) + indexOnPage; 
+                        const animationClass = 'fade-in', animationDelay = indexOnPage * 0.05;
+                        const formatPercentage = (v) => v !== null && !isNaN(v) ? (v * 100).toFixed(1) + '%' : 'N/A';
+                        const formatOdds = (v) => v !== null && !isNaN(v) ? parseFloat(v).toFixed(2) : 'N/A';
+                        const getImpliedProbWidth = (v) => (v !== null && !isNaN(v) && v > 0) ? Math.min((1 / v) * 100, 100) : 0;
+                        
+                        let outcomeDisplay = 'N/A', outcomeClass = 'outcome-unknown', outcomeIconClass = 'outcome-icon-unknown'; 
+                        if (item.outcome !== null && item.outcome !== undefined) {
+                            const ov = String(item.outcome).toLowerCase();
+                            outcomeDisplay = String(item.outcome).toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                            if (['home', 'draw', 'away'].includes(ov)) { outcomeClass = `outcome-${ov}`; outcomeIconClass = `outcome-icon-${ov}`; } 
+                            else if (ov.includes('over') || ov.includes('under')) { outcomeClass = 'outcome-goals'; outcomeIconClass = `outcome-icon-goals`; }
+                        }
+                        const stateValue = item.state ? String(item.state).toLowerCase() : 'unknown';
+                        const stateClass = `state-${stateValue}`, stateIconClass = `state-icon-${stateValue}`;
+                        const analysisBtnFocusRing = document.documentElement.classList.contains('dark') ? 'dark:focus:ring-accent-300 dark:hover:bg-dark-100' : 'focus:ring-indigo-300 hover:bg-indigo-50';
+                        let analysisButtonHTML = `<span class="text-sm text-gray-400 dark:text-gray-500 italic">N/A</span>`;
+                        if ((stateValue !== 'pending' && stateValue !== 'unknown') || (item.full_bot_response_analyze && String(item.full_bot_response_analyze).trim() !== '')) {
+                             analysisButtonHTML = `<button class="view-analysis-btn text-sm font-medium text-indigo-600 dark:text-accent-200 hover:text-indigo-800 dark:hover:text-accent-100 transition-colors duration-150 flex items-center focus:outline-none focus:ring-2 ${analysisBtnFocusRing} rounded px-2 py-1" data-item-index="${overallIndex}" aria-label="View analysis for ${item.match || 'this match'}"><i class="fas fa-search-plus mr-1.5"></i>View Analysis</button>`;
+                        }
+                        const matchDate = item.date instanceof Date && !isNaN(item.date) ? `<div class="text-xs text-gray-500 dark:text-gray-400">${item.date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</div>` : '';
+                        const futbolIconBg = document.documentElement.classList.contains('dark') ? 'dark:bg-accent-500/20' : 'bg-indigo-100';
+                        const futbolIconColor = document.documentElement.classList.contains('dark') ? 'dark:text-accent-200' : 'text-indigo-600';
+                        const oddsProgressBarBg = document.documentElement.classList.contains('dark') ? 'dark:bg-dark-100' : 'bg-gray-200';
+                        
+                        // Changed px-6 to px-3 and removed whitespace-nowrap from td base class
+                        rowsHTML += `
+                            <tr class="highlight-row ${animationClass}" style="animation-delay: ${animationDelay}s">
+                                <td data-label="Match" class="px-3 py-4"> 
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 ${futbolIconBg} rounded-full flex items-center justify-center mr-3"><i class="fas fa-futbol ${futbolIconColor}"></i></div>
+                                        <div><div class="text-sm font-medium text-gray-900 dark:text-gray-100">${item.match || 'N/A'}</div>${matchDate}</div>
+                                    </div>
+                                </td>
+                                <td data-label="Home Odds" class="px-3 py-4"><div class="text-sm text-gray-900 dark:text-gray-200">${formatOdds(item.home)}</div><div class="w-full ${oddsProgressBarBg} rounded-full h-1.5 mt-1"><div class="bg-blue-600 dark:bg-accent-300 h-1.5 rounded-full" style="width: ${getImpliedProbWidth(item.home)}%"></div></div></td>
+                                <td data-label="Draw Odds" class="px-3 py-4"><div class="text-sm text-gray-900 dark:text-gray-200">${formatOdds(item.draw)}</div><div class="w-full ${oddsProgressBarBg} rounded-full h-1.5 mt-1"><div class="bg-yellow-500 dark:bg-amber-400 h-1.5 rounded-full" style="width: ${getImpliedProbWidth(item.draw)}%"></div></div></td>
+                                <td data-label="Away Odds" class="px-3 py-4"><div class="text-sm text-gray-900 dark:text-gray-200">${formatOdds(item.away)}</div><div class="w-full ${oddsProgressBarBg} rounded-full h-1.5 mt-1"><div class="bg-red-500 dark:bg-red-500 h-1.5 rounded-full" style="width: ${getImpliedProbWidth(item.away)}%"></div></div></td>
+                                <td data-label="Stat. Pred." class="px-3 py-4 text-sm text-gray-900 dark:text-gray-200">${item.statistical ? String(item.statistical).charAt(0).toUpperCase() + String(item.statistical).slice(1) : 'N/A'}${item.statistical_confidence !== null && !isNaN(item.statistical_confidence) ? ` (${formatPercentage(item.statistical_confidence)})` : ''}</td>
+                                <td data-label="Context. Pred." class="px-3 py-4 text-sm text-gray-900 dark:text-gray-200">${item.contextual ? String(item.contextual).charAt(0).toUpperCase() + String(item.contextual).slice(1) : 'N/A'}${item.contextual_confidence !== null && !isNaN(item.contextual_confidence) ? ` (${formatPercentage(item.contextual_confidence)})` : ''}</td>
+                                <td data-label="Outcome" class="px-3 py-4"><span class="px-2 py-1 text-xs rounded-full ${outcomeClass}"><span class="${outcomeIconClass}"></span> ${outcomeDisplay}</span></td>
+                                <td data-label="State" class="px-3 py-4"><span class="px-2 py-1 text-xs rounded-full ${stateClass}"><span class="${stateIconClass}"></span> ${stateValue.charAt(0).toUpperCase() + stateValue.slice(1)}</span></td>
+                                <td data-label="Analysis" class="px-3 py-4 text-sm text-left">${analysisButtonHTML}</td>
+                            </tr>`;
+                    });
+                    tableBody.innerHTML = rowsHTML; 
+                    updateSortIcons();
+                    renderPagination(effectiveTotalPages, currentPage); 
+                }
+        
+                function updateSortIcons() {
+                     document.querySelectorAll('.sortable').forEach(header => {
+                         header.classList.remove('sort-asc', 'sort-desc');
+                         const column = header.getAttribute('data-column'), sortIcon = header.querySelector('.fa-sort'), sortUpIcon = header.querySelector('.fa-sort-up'), sortDownIcon = header.querySelector('.fa-sort-down');
+                         if (column !== 'updatedAt') { 
+                            if(sortIcon) sortIcon.style.display = 'inline-block'; if(sortUpIcon) sortUpIcon.style.display = 'none'; if(sortDownIcon) sortDownIcon.style.display = 'none';
+                         } else { header.querySelectorAll('i').forEach(icon => icon.style.display = 'none'); }
+                         if (column === sortColumn) {
+                             header.classList.add(`sort-${sortDirection}`);
+                             if (column !== 'updatedAt') { 
+                                 if(sortIcon) sortIcon.style.display = 'none';
+                                 if (sortDirection === 'asc' && sortUpIcon) sortUpIcon.style.display = 'inline-block';
+                                 else if (sortDownIcon) sortDownIcon.style.display = 'inline-block';
+                             }
+                         }
+                     });
+                }
+        
+                function updateSummaryStats() {
+                    const totalMatches = allData.length;
+                    const predictionsWonOverall = allData.filter(item => item.state === 'won').length;
+                    const predictionsLossOverall = allData.filter(item => item.state === 'loss').length;
+                    const predictionsPending = allData.filter(item => item.state === 'pending').length;
+                    const totalDecidedOverall = predictionsWonOverall + predictionsLossOverall;
+                    const valid1X2Types = ['home', 'draw', 'away'];
+                                
+                    totalMatchesElement.textContent = totalMatches; totalWonElement.textContent = predictionsWonOverall;
+                    totalLossElement.textContent = predictionsLossOverall; totalPendingElement.textContent = predictionsPending;
+                                
+                    const winRateValue = totalDecidedOverall > 0 ? (predictionsWonOverall / totalDecidedOverall) : 0;
+                    winRateElement.textContent = `${Math.round(winRateValue * 100)}%`;
+                    document.getElementById('win-rate-details').textContent = `(${predictionsWonOverall}/${totalDecidedOverall} Decided)`;
+                    const winRateCircle = document.getElementById('win-rate-circle');
+                    if (winRateCircle) winRateCircle.style.strokeDasharray = `${Math.round(winRateValue * 100)}, 100`;
+                
+                    const decidedWithStat1X2 = allData.filter(item => (item.statistical && valid1X2Types.includes(String(item.statistical).toLowerCase())) && (item.state === 'won' || item.state === 'loss'));
+                    let correctStat = 0;
+                    decidedWithStat1X2.forEach(item => { if (item.statistical && String(item.statistical).toLowerCase() === String(item.outcome).toLowerCase()) correctStat++; });
+                    const statAccuracyValue = decidedWithStat1X2.length > 0 ? (correctStat / decidedWithStat1X2.length) : 0;
+                    statAccuracyElement.textContent = `${Math.round(statAccuracyValue * 100)}%`;
+                    const statAccBar = document.getElementById('stat-accuracy-bar'); if(statAccBar) statAccBar.style.width = `${Math.round(statAccuracyValue * 100)}%`;
+                    const statAccDet = document.getElementById('stat-accuracy-details'); if(statAccDet) statAccDet.textContent = `(${correctStat}/${decidedWithStat1X2.length} 1X2 Bets)`;
+                
+                    const decidedWithContextual1X2 = allData.filter(item => (item.contextual && valid1X2Types.includes(String(item.contextual).toLowerCase())) && (item.state === 'won' || item.state === 'loss'));
+                    let correctContextual1X2 = 0;
+                    decidedWithContextual1X2.forEach(item => { if (item.contextual && String(item.contextual).toLowerCase() === String(item.outcome).toLowerCase()) correctContextual1X2++; });
+                    const contextualAccValue = decidedWithContextual1X2.length > 0 ? (correctContextual1X2 / decidedWithContextual1X2.length) : 0;
+                    contextual1X2AccuracyElement.textContent = `${Math.round(contextualAccValue * 100)}%`;
+                    const conAccBar = document.getElementById('contextual-1x2-accuracy-bar'); if(conAccBar) conAccBar.style.width = `${Math.round(contextualAccValue * 100)}%`;
+                    const conAccDet = document.getElementById('contextual-1x2-accuracy-details'); if(conAccDet) conAccDet.textContent = `(${correctContextual1X2}/${decidedWithContextual1X2.length} 1X2 Bets)`;
+                    
+                    const wonMatchesFor1X2Odds = allData.filter(item => item.state === 'won');
+                    let sumOfWinning1X2Odds = 0, countOfWinning1X2Odds = 0;
+                    wonMatchesFor1X2Odds.forEach(item => {
+                        const outcome = String(item.outcome).toLowerCase(), lowStat = item.statistical ? String(item.statistical).toLowerCase() : null, lowContext = item.contextual ? String(item.contextual).toLowerCase() : null;
+                        let oddsForThisWin = 0;
+                        if (lowStat === outcome && valid1X2Types.includes(lowStat)) {
+                            if (outcome === 'home' && item.home != null) oddsForThisWin = parseFloat(item.home);
+                            else if (outcome === 'draw' && item.draw != null) oddsForThisWin = parseFloat(item.draw);
+                            else if (outcome === 'away' && item.away != null) oddsForThisWin = parseFloat(item.away);
+                        } else if (lowContext === outcome && valid1X2Types.includes(lowContext)) {
+                            if (outcome === 'home' && item.home != null) oddsForThisWin = parseFloat(item.home);
+                            else if (outcome === 'draw' && item.draw != null) oddsForThisWin = parseFloat(item.draw);
+                            else if (outcome === 'away' && item.away != null) oddsForThisWin = parseFloat(item.away);
+                        }
+                        if (oddsForThisWin > 0) { sumOfWinning1X2Odds += oddsForThisWin; countOfWinning1X2Odds++; }
+                    });
+                    avgWinningOddsElement.textContent = countOfWinning1X2Odds > 0 ? (sumOfWinning1X2Odds / countOfWinning1X2Odds).toFixed(2) : 'N/A';
+                
+                    const decidedMatchesForOddsAnalysis = allData.filter(item => item.state === 'won' || item.state === 'loss');
+                    
+                    // Home Odds Win Rates & EV Analysis (Combined Logic)
+                    let homeAnalysis = oddsBuckets.map(b => ({ ...b, totalPredictions: 0, successfulPredictions: 0, sumOfOdds: 0 }));
+                    decidedMatchesForOddsAnalysis.forEach(item => {
+                        const statPred = item.statistical ? String(item.statistical).toLowerCase() : null;
+                        const contextPred = item.contextual ? String(item.contextual).toLowerCase() : null;
+                        const isHomeBet = (statPred === 'home' || contextPred === 'home');
+                        
+                        if (isHomeBet && item.home != null && !isNaN(item.home)) {
+                            for (const bucket of homeAnalysis) { 
+                                if (item.home >= bucket.min && item.home <= bucket.max) { 
+                                    bucket.totalPredictions++; 
+                                    bucket.sumOfOdds += item.home;
+                                    if (String(item.outcome).toLowerCase() === 'home') bucket.successfulPredictions++; 
+                                    break; 
+                                } 
+                            }
+                        }
+                    });
+
+                    if (homeOddsRangesContainer) {
+                        homeOddsRangesContainer.innerHTML = '';
+                        homeEvByOddsContainer.innerHTML = '';
+                        let displayedHomeBuckets = 0;
+                        const homeColorClass = 'text-cyan-600 dark:text-cyan-400';
+                        homeAnalysis.sort((a, b) => a.min - b.min).forEach(bucket => {
+                            if (bucket.totalPredictions >= minSamplesPerBucket) {
+                                displayedHomeBuckets++;
+                                const winRate = bucket.totalPredictions > 0 ? bucket.successfulPredictions / bucket.totalPredictions : 0;
+                                const avgOdds = bucket.totalPredictions > 0 ? bucket.sumOfOdds / bucket.totalPredictions : 0;
+                                const ev = (winRate * (avgOdds - 1)) - (1 - winRate);
+                                const isPositive = ev >= 0;
+                                const evColorClass = isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-500';
+                                const evSign = isPositive ? '+' : '';
+
+                                const winRateHTML = `
+                                    <div class="flex items-center justify-between py-1.5 border-b border-gray-200 dark:border-dark-100 last:border-b-0">
+                                        <div><p class="text-sm text-gray-700 dark:text-gray-200">${bucket.label}</p><p class="text-xs text-gray-500 dark:text-gray-400 pt-0.5">${bucket.successfulPredictions} wins / ${bucket.totalPredictions} total</p></div>
+                                        <p class="text-md font-semibold ${homeColorClass}">${(winRate * 100).toFixed(1)}%</p>
+                                    </div>`;
+                                homeOddsRangesContainer.innerHTML += winRateHTML;
+                                
+                                const evHTML = `
+                                    <div class="flex items-center justify-between py-1.5 border-b border-gray-200 dark:border-dark-100 last:border-b-0">
+                                        <div><p class="text-sm text-gray-700 dark:text-gray-200">${bucket.label}</p><p class="text-xs text-gray-500 dark:text-gray-400 pt-0.5">${(winRate * 100).toFixed(1)}% WR @ ${avgOdds.toFixed(2)}</p></div>
+                                        <p class="text-md font-semibold ${evColorClass}">${evSign}${(ev * 100).toFixed(1)}%</p>
+                                    </div>`;
+                                homeEvByOddsContainer.innerHTML += evHTML;
+                            }
+                        });
+                        if (displayedHomeBuckets === 0) {
+                            const noDataMsg = `<p class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Not enough data.</p>`;
+                            homeOddsRangesContainer.innerHTML = noDataMsg;
+                            homeEvByOddsContainer.innerHTML = noDataMsg;
+                        }
+                    }
+
+                    // Away Odds Win Rates & EV Analysis (Combined Logic)
+                    let awayAnalysis = oddsBuckets.map(b => ({ ...b, totalPredictions: 0, successfulPredictions: 0, sumOfOdds: 0 }));
+                     decidedMatchesForOddsAnalysis.forEach(item => {
+                        const statPred = item.statistical ? String(item.statistical).toLowerCase() : null;
+                        const contextPred = item.contextual ? String(item.contextual).toLowerCase() : null;
+                        const isAwayBet = (statPred === 'away' || contextPred === 'away');
+
+                        if (isAwayBet && item.away != null && !isNaN(item.away)) {
+                            for (const bucket of awayAnalysis) {
+                                if (item.away >= bucket.min && item.away <= bucket.max) {
+                                    bucket.totalPredictions++;
+                                    bucket.sumOfOdds += item.away;
+                                    if (String(item.outcome).toLowerCase() === 'away') bucket.successfulPredictions++;
+                                    break;
+                                }
+                            }
+                        }
+                    });
+
+                    if (awayOddsRangesContainer) {
+                        awayOddsRangesContainer.innerHTML = '';
+                        awayEvByOddsContainer.innerHTML = '';
+                        let displayedAwayBuckets = 0;
+                        const awayColorClass = 'text-pink-600 dark:text-pink-400';
+                        awayAnalysis.sort((a, b) => a.min - b.min).forEach(bucket => {
+                            if (bucket.totalPredictions >= minSamplesPerBucket) {
+                                displayedAwayBuckets++;
+                                const winRate = bucket.totalPredictions > 0 ? bucket.successfulPredictions / bucket.totalPredictions : 0;
+                                const avgOdds = bucket.totalPredictions > 0 ? bucket.sumOfOdds / bucket.totalPredictions : 0;
+                                const ev = (winRate * (avgOdds - 1)) - (1 - winRate);
+                                const isPositive = ev >= 0;
+                                const evColorClass = isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-500';
+                                const evSign = isPositive ? '+' : '';
+                                
+                                const winRateHTML = `
+                                    <div class="flex items-center justify-between py-1.5 border-b border-gray-200 dark:border-dark-100 last:border-b-0">
+                                        <div><p class="text-sm text-gray-700 dark:text-gray-200">${bucket.label}</p><p class="text-xs text-gray-500 dark:text-gray-400 pt-0.5">${bucket.successfulPredictions} wins / ${bucket.totalPredictions} total</p></div>
+                                        <p class="text-md font-semibold ${awayColorClass}">${(winRate * 100).toFixed(1)}%</p>
+                                    </div>`;
+                                awayOddsRangesContainer.innerHTML += winRateHTML;
+
+                                const evHTML = `
+                                    <div class="flex items-center justify-between py-1.5 border-b border-gray-200 dark:border-dark-100 last:border-b-0">
+                                        <div><p class="text-sm text-gray-700 dark:text-gray-200">${bucket.label}</p><p class="text-xs text-gray-500 dark:text-gray-400 pt-0.5">${(winRate * 100).toFixed(1)}% WR @ ${avgOdds.toFixed(2)}</p></div>
+                                        <p class="text-md font-semibold ${evColorClass}">${evSign}${(ev * 100).toFixed(1)}%</p>
+                                    </div>`;
+                                awayEvByOddsContainer.innerHTML += evHTML;
+                            }
+                        });
+                        if (displayedAwayBuckets === 0) {
+                             const noDataMsg = `<p class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Not enough data.</p>`;
+                            awayOddsRangesContainer.innerHTML = noDataMsg;
+                            awayEvByOddsContainer.innerHTML = noDataMsg;
+                        }
+                    }
+                }
+
+
+                function prepareWinRateChartData(data) {
+                    const relevantData = data.filter(item => item.updatedAt instanceof Date && !isNaN(item.updatedAt) && (item.state === 'won' || item.state === 'loss')).sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime());
+                    if (relevantData.length === 0) return { labels: [], datasets: {} };
+                    const eventsByDate = {};
+                    relevantData.forEach(item => {
+                        const dateStr = item.updatedAt.toISOString().split('T')[0];
+                        if (!eventsByDate[dateStr]) eventsByDate[dateStr] = { wins: 0, losses: 0, totalBets: 0, dateObj: new Date(dateStr + "T00:00:00.000Z") };
+                        if (item.state === 'won') eventsByDate[dateStr].wins++; else if (item.state === 'loss') eventsByDate[dateStr].losses++;
+                        eventsByDate[dateStr].totalBets++;
+                    });
+                    const sortedDailyEvents = Object.values(eventsByDate).sort((a, b) => a.dateObj - b.dateObj);
+                    if (sortedDailyEvents.length === 0) return { labels: [], datasets: {} };
+                    const labels = [], cumulativeWinRateData = [], dailyBetsData = [], rollingWinRateData = []; 
+                    const rollingWindowDays = 7; let cumulativeWins = 0, cumulativeLosses = 0;
+                    for (let i = 0; i < sortedDailyEvents.length; i++) {
+                        const dayData = sortedDailyEvents[i]; labels.push(dayData.dateObj.toISOString().split('T')[0]);
+                        cumulativeWins += dayData.wins; cumulativeLosses += dayData.losses;
+                        const currentCumulativeTotal = cumulativeWins + cumulativeLosses;
+                        cumulativeWinRateData.push(currentCumulativeTotal > 0 ? parseFloat(((cumulativeWins / currentCumulativeTotal) * 100).toFixed(1)) : 0);
+                        dailyBetsData.push(dayData.totalBets);
+                        let rollingWinsInWindow = 0, rollingLossesInWindow = 0, actualDataPointsInWindow = 0;
+                        for (let j = i; j >= 0 && actualDataPointsInWindow < rollingWindowDays; j--) {
+                             rollingWinsInWindow += sortedDailyEvents[j].wins; rollingLossesInWindow += sortedDailyEvents[j].losses; actualDataPointsInWindow++;
+                        }
+                        const rollingTotalInWindow = rollingWinsInWindow + rollingLossesInWindow;
+                        if (rollingTotalInWindow > 0 && actualDataPointsInWindow >= Math.min(rollingWindowDays, 3)) rollingWinRateData.push(parseFloat(((rollingWinsInWindow / rollingTotalInWindow) * 100).toFixed(1)));
+                        else rollingWinRateData.push(null); 
+                    }
+                    return { labels: labels, datasets: { cumulativeWinRate: cumulativeWinRateData, dailyBets: dailyBetsData, rollingWinRate: rollingWinRateData }};
+                }
+        
+                function renderWinRateChart(chartLabels, datasets) {
+                    const chartContainer = document.getElementById('winRateChartContainer');
+                    if (winRateChartInstance) winRateChartInstance.destroy(); winRateChartInstance = null;
+                    const isDarkMode = document.documentElement.classList.contains('dark');
+
+                    if (chartLabels.length === 0 || !datasets || Object.keys(datasets).length === 0 || datasets.cumulativeWinRate.length === 0) {
+                        chartContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 py-4 flex items-center justify-center h-full"><i class="fas fa-chart-line mr-2"></i>Not enough data for chart.</p>`; return;
+                    }
+                    if (!document.getElementById('winRateChart')) chartContainer.innerHTML = '<canvas id="winRateChart"></canvas>';
+                    
+                    const ctx = document.getElementById('winRateChart')?.getContext('2d');
+                    if (!ctx) { console.error("Failed to get chart context."); chartContainer.innerHTML = `<p class="text-center text-red-500 dark:text-red-400 py-4 flex items-center justify-center h-full"><i class="fas fa-exclamation-triangle mr-2"></i>Chart canvas not found.</p>`; return; }
+
+                    let initialSuggestedMaxForBetsAxis = 5; 
+                    if (datasets.dailyBets && datasets.dailyBets.length > 0) {
+                        const dailyBetValues = datasets.dailyBets.filter(b => b !== null && isFinite(b));
+                        const maxBets = dailyBetValues.length > 0 ? Math.max(...dailyBetValues) : 0;
+                        if (isFinite(maxBets)) {
+                            if (maxBets <= 0) initialSuggestedMaxForBetsAxis = 5;
+                            else if (maxBets <= 5) initialSuggestedMaxForBetsAxis = Math.max(Math.ceil(maxBets * 1.2) + 1, maxBets +1);
+                            else if (maxBets <= 10) initialSuggestedMaxForBetsAxis = Math.ceil(maxBets / 2) * 2 + 2;
+                            else if (maxBets <= 50) initialSuggestedMaxForBetsAxis = Math.ceil(maxBets / 5) * 5 + 5;
+                            else initialSuggestedMaxForBetsAxis = Math.ceil(maxBets / (maxBets <= 100 ? 10 : 20)) * (maxBets <= 100 ? 10 : 20) + (maxBets <= 100 ? 10 : 20);
+                            if (initialSuggestedMaxForBetsAxis < 5 && maxBets > 0) initialSuggestedMaxForBetsAxis = 5;
+                            if (initialSuggestedMaxForBetsAxis <= maxBets && maxBets > 0) initialSuggestedMaxForBetsAxis = Math.ceil(maxBets * 1.1);
+                        }
+                    }
+                    
+                    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e5e7eb';
+                    const textColor = isDarkMode ? '#d1d5db' : '#4b5563'; 
+                    const titleColor = isDarkMode ? '#e5e7eb' : '#374151'; 
+                    const tooltipBgColor = isDarkMode ? '#0f172a' : '#1f2937'; 
+                    const tooltipTitleColor = isDarkMode ? '#f3f4f6' : '#f3f4f6';
+                    const tooltipBodyColor = isDarkMode ? '#d1d5db' : '#d1d5db';
+                    const tooltipBorderColor = isDarkMode ? '#1f2937' : '#4b5563';
+
+                    winRateChartInstance = new Chart(ctx, {
+                        type: 'bar', 
+                        data: {
+                            labels: chartLabels,
+                            datasets: [
+                                {
+                                    label: 'Daily Bets', data: datasets.dailyBets, type: 'bar',
+                                    backgroundColor: isDarkMode ? 'rgba(107, 114, 128, 0.4)' : 'rgba(156, 163, 175, 0.4)', 
+                                    borderColor: isDarkMode ? 'rgba(107, 114, 128, 0.6)' : 'rgba(107, 114, 128, 0.6)',
+                                    borderWidth: 1, yAxisID: 'yBets', order: 3 
+                                },
+                                {
+                                    label: '7-Day Rolling Win Rate', data: datasets.rollingWinRate, type: 'line',
+                                    borderColor: isDarkMode ? '#fcd34d' : '#f59e0b', 
+                                    backgroundColor: isDarkMode ? 'rgba(252, 211, 77, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                                    tension: 0.3, fill: false, pointRadius: 2, pointHoverRadius: 5, yAxisID: 'yWinRate', spanGaps: true, order: 2
+                                },
+                                {
+                                    label: 'Cumulative Win Rate', data: datasets.cumulativeWinRate, type: 'line',
+                                    borderColor: isDarkMode ? '#60a5fa' : '#2563eb', 
+                                    backgroundColor: isDarkMode ? 'rgba(96, 165, 250, 0.15)' : 'rgba(37, 99, 235, 0.15)',
+                                    tension: 0.1, fill: true, pointRadius: 3, pointHoverRadius: 6, yAxisID: 'yWinRate', order: 1 
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                            scales: {
+                                x: { title: { display: true, text: 'Date (Updated On)', color: titleColor, font: { weight: 'semibold' } }, ticks: { maxRotation: 45, minRotation: 30, autoSkip: true, maxTicksLimit: 20, color: textColor }, grid: { display: false } },
+                                yWinRate: { type: 'linear', display: true, position: 'left', min: 0, max: 100, title: { display: true, text: 'Win Rate (%)', color: titleColor, font: { weight: 'semibold' } }, ticks: { callback: value => value + '%', color: textColor }, grid: { color: gridColor } },
+                                yBets: { type: 'linear', display: true, position: 'right', min: 0, suggestedMax: initialSuggestedMaxForBetsAxis, title: { display: true, text: 'Daily Bets', color: titleColor, font: { weight: 'semibold' } }, ticks: { color: textColor, precision: 0 }, grid: { drawOnChartArea: false } }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    backgroundColor: tooltipBgColor, titleColor: tooltipTitleColor, bodyColor: tooltipBodyColor, borderColor: tooltipBorderColor, borderWidth: 1, padding: 10,
+                                    callbacks: { label: function(c) { let l = c.dataset.label || ''; if (l) l += ': '; if (c.parsed.y !== null) l += c.dataset.yAxisID === 'yWinRate' ? c.parsed.y.toFixed(1) + '%' : c.parsed.y; return l; } }
+                                },
+                                legend: { display: true, position: 'top', labels: { color: titleColor, usePointStyle: true, padding: 20, font: { size: 13 } } }
+                            }
+                        }
+                    });
+                }
+        
+                function openModal() {
+                    const loadingSpinnerColor = document.documentElement.classList.contains('dark') ? 'dark:border-accent-300' : 'border-indigo-600';
+                    modalContentBody.innerHTML = `<div class="flex flex-col items-center justify-center py-16"><div class="animate-spin rounded-full h-10 w-10 border-b-2 ${loadingSpinnerColor} mb-3"></div><p class="text-gray-600 dark:text-gray-400">Loading Analysis...</p></div>`;
+                    analysisModal.classList.remove('hidden');
+                    requestAnimationFrame(() => { analysisModal.classList.remove('opacity-0'); analysisModalContent.classList.remove('scale-95', 'opacity-0'); });
+                    modalOkBtn.focus(); 
+                }
+        
+                function hideModal() {
+                    analysisModal.classList.add('opacity-0'); analysisModalContent.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => { analysisModal.classList.add('hidden'); modalContentBody.innerHTML = ''; }, 300); 
+                }
+        
+                function showAnalysisModalForItem(item) {
+                    openModal(); 
+                    const isDarkMode = document.documentElement.classList.contains('dark');
+                    const infoIconColor = isDarkMode ? 'text-accent-200' : 'text-blue-500';
+                    const errorIconColor = isDarkMode ? 'text-red-400' : 'text-red-500';
+                    const defaultTextColor = isDarkMode ? 'dark:text-gray-400' : 'text-gray-600';
+                    const defaultSubTextColor = isDarkMode ? 'dark:text-gray-500' : 'text-gray-500';
+
+                    if (item && item.full_bot_response_analyze && String(item.full_bot_response_analyze).trim() !== '') {
+                        modalContentBody.innerHTML = formatAnalysisContent(item.full_bot_response_analyze, isDarkMode);
+                    } else if (item) { 
+                        modalContentBody.innerHTML = `<div class="text-center py-10"><i class="fas fa-info-circle ${infoIconColor} text-3xl mb-3"></i><p class="${defaultTextColor} font-semibold">No detailed analysis available for this entry.</p>${item.match ? `<p class="text-sm ${defaultSubTextColor}">Match: ${item.match}</p>` : ''}</div>`;
+                    } else { 
+                        modalContentBody.innerHTML = `<div class="text-center py-10"><i class="fas fa-exclamation-triangle ${errorIconColor} text-3xl mb-3"></i><p class="${errorIconColor} font-semibold">Could not load analysis data.</p><p class="text-sm ${defaultSubTextColor}">The requested item data was not found or the reference was invalid.</p></div>`;
+                    }
+                }
+        
+                function formatAnalysisContent(analysisText, isDarkMode) {
+                    if (!analysisText || typeof analysisText !== 'string' || analysisText.trim() === '') {
+                        return `<p class="text-gray-500 dark:text-gray-400 text-center py-8 italic">No analysis content provided or content is empty.</p>`;
+                    }
+                    const normText = analysisText.replace(/\r\n/g, '\n').trim();
+                    const sections = normText.split(/\n(?=\*\*|Prediction Validity Window)/);
+                    let html = '<div class="space-y-6">';
+                    
+                    const titleColor = isDarkMode ? 'text-accent-100' : 'text-indigo-700';
+                    const titleBorderColor = isDarkMode ? 'border-accent-500/30' : 'border-indigo-100';
+                    const listItemIconColor = isDarkMode ? 'text-accent-200' : 'text-indigo-500';
+                    const defaultPColor = isDarkMode ? 'text-gray-300' : 'text-gray-700';
+                    const subPColor = isDarkMode ? 'text-gray-400' : 'text-gray-600';
+                    const iconBoxBg = isDarkMode ? 'bg-dark-200' : 'bg-indigo-50';
+                    const iconBoxTextColor = isDarkMode ? 'text-gray-200' : 'text-gray-800';
+                    const iconColor = isDarkMode ? 'text-accent-200' : 'text-indigo-600';
+                    const validityTitleColor = isDarkMode ? 'text-amber-200' : 'text-amber-800';
+                    const validityIconColor = isDarkMode ? 'text-amber-300' : 'text-amber-600';
+                    const validityTextColor = isDarkMode ? 'text-amber-300' : 'text-amber-700';
+                    const validityBg = isDarkMode ? 'bg-amber-900/50 border-amber-700/50' : 'bg-amber-50 border-amber-200';
+
+
+                    sections.forEach(rawSec => {
+                        let secText = rawSec.trim(); if (!secText) return;
+                        let isPredWindow = false, secTitle = '', secBody = secText; 
+                        if (secText.startsWith('**') && secText.includes('**', 2)) {
+                            const titleEnd = secText.indexOf('**', 2);
+                            secTitle = secText.substring(2, titleEnd).trim();
+                            secBody = secText.substring(titleEnd + 2).trim();
+                        } else if (secText.startsWith('Prediction Validity Window')) {
+                            isPredWindow = true; const firstNL = secText.indexOf('\n');
+                            secTitle = (firstNL !== -1) ? secText.substring(0, firstNL).trim() : secText;
+                            secBody = (firstNL !== -1) ? secText.substring(firstNL + 1).trim() : '';
+                        }
+
+                        if (isPredWindow) {
+                            html += `<div class="p-4 ${validityBg} rounded-lg shadow-sm"><h4 class="text-md font-semibold ${validityTitleColor} mb-2 flex items-center"><i class="fas fa-stopwatch ${validityIconColor} mr-2.5"></i>${secTitle}</h4>`;
+                            secBody.split('\n').map(l => l.trim()).filter(l => l).forEach(l => { html += `<p class="ml-1 ${validityTextColor} text-sm leading-relaxed">${l.startsWith('• ') ? l.substring(2) : l}</p>`; });
+                            html += `</div>`;
+                        } else if (secTitle) { 
+                            html += `<div class="section-block"><h3 class="text-xl font-bold ${titleColor} mb-4 pb-2 border-b-2 ${titleBorderColor}">${secTitle}</h3>`;
+                            secBody.split('\n').map(l => l.trim()).filter(l => l).forEach(l => {
+                                if (/^[🏆🔍⚽📊💡⚠️]/.test(l)) {
+                                    const iconEnd = l.indexOf(' '); const icon = iconEnd !== -1 ? l.substring(0, iconEnd) : ''; const text = iconEnd !== -1 ? l.substring(iconEnd + 1) : l;
+                                    html += `<div class="flex items-start mb-2.5 p-3 ${iconBoxBg} rounded-md shadow-sm">${icon ? `<span class="${iconColor} text-xl mr-3 mt-0.5">${icon}</span>` : ''}<span class="${iconBoxTextColor} text-sm leading-relaxed">${text}</span></div>`;
+                                } else if (l.startsWith('▮')) html += `<h5 class="text-base font-semibold ${defaultPColor} mt-4 mb-1.5">${l.replace(/^▮\s*/, '').trim()}</h5>`;
+                                else if (l.startsWith('▸') || l.startsWith('•')) html += `<p class="ml-5 ${subPColor} text-sm leading-relaxed relative before:content-['${l[0]}'] before:absolute before:left-[-1em] before:${listItemIconColor}">${l.substring(1).trim()}</p>`;
+                                else html += `<p class="${defaultPColor} mb-1.5 text-sm leading-relaxed">${l}</p>`;
+                            });
+                            html += `</div>`;
+                        } else if (secBody) { 
+                            html += `<div class="${defaultPColor} text-sm leading-relaxed py-2 space-y-1">${secBody.split('\n').map(l => `<p>${l.trim()}</p>`).join('')}</div>`;
+                        }
+                    });
+                    html += '</div>'; return html;
+                }
+        
+                document.querySelectorAll('.sortable').forEach(h => {
+                    h.addEventListener('click', () => {
+                        const col = h.getAttribute('data-column'); if (col === 'updatedAt' && !h.querySelector('i:not([style*="display: none"])')) return;
+                        if (sortColumn === col) sortDirection = (sortDirection === 'asc' ? 'desc' : 'asc');
+                        else { sortColumn = col; sortDirection = (col === 'updatedAt' || col === 'date') ? 'desc' : 'asc'; }
+                        currentPage = 1; renderTable(); 
+                    });
+                });
+        
+                filterDateInput.addEventListener('change', (e) => {
+                    const ds = e.target.value;
+                    if (ds) { const [y, m, d] = ds.split('-').map(Number); selectedDateFilter = new Date(Date.UTC(y, m - 1, d)); clearDateBtn.style.display = 'flex'; } 
+                    else { selectedDateFilter = null; clearDateBtn.style.display = 'none'; }
+                    currentPage = 1; renderTable();
+                });
+        
+                clearDateBtn.addEventListener('click', () => { filterDateInput.value = ''; selectedDateFilter = null; clearDateBtn.style.display = 'none'; currentPage = 1; renderTable(); });
+                prevPageBtn.addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTable(); window.scrollTo({ top: tableBody.closest('div.overflow-x-auto')?.offsetTop - 20 || 0, behavior: 'smooth' }); } });
+                nextPageBtn.addEventListener('click', () => { const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage); if (currentPage < totalPages) { currentPage++; renderTable(); window.scrollTo({ top: tableBody.closest('div.overflow-x-auto')?.offsetTop - 20 || 0, behavior: 'smooth' }); } });
+                filterState.addEventListener('change', (e) => { currentFilter = e.target.value; currentPage = 1; renderTable(); });
+                refreshBtn.addEventListener('click', () => { fetchData(); });
+        
+                tableBody.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.view-analysis-btn');
+                    if (btn) {
+                        const itemIdxStr = btn.getAttribute('data-item-index');
+                        if (itemIdxStr !== null && itemIdxStr !== '') {
+                            const itemIdx = parseInt(itemIdxStr, 10);
+                            if (!isNaN(itemIdx) && itemIdx >= 0 && itemIdx < filteredAndSortedData.length) showAnalysisModalForItem(filteredAndSortedData[itemIdx]);
+                            else { console.error('Invalid item index:', itemIdxStr); showAnalysisModalForItem(null); }
+                        } else { console.warn('Missing data-item-index'); showAnalysisModalForItem(null); }
+                    }
+                });
+        
+                closeModalBtn.addEventListener('click', hideModal); modalOkBtn.addEventListener('click', hideModal);
+                document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !analysisModal.classList.contains('hidden')) hideModal(); });
+        
+                fetchData();
+            });
+        </script>
+    </body>
+</html>
